@@ -1,0 +1,18 @@
+{
+  "name": "todos-api",
+  "version": "1.0.0",
+  "description": "Node todo api",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Daniel Kofi Kyeremateng",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.13.4",
+    "mongoose": "^4.4.7",
+    "sequelize": "^3.19.3",
+    "sqlite3": "^3.1.1",
+    "underscore": "^1.8.3"
+  }
+}
