@@ -1,9 +1,9 @@
 var Sequelize = require('sequelize');
-var env = proccess.env.NODE_ENV  || 'development';
+var env = process.env.NODE_ENV  || 'development';
 var sequelize;
 
 if (env === "production") {
-    sequelize = new Sequelize(proccess.env.DATABASE_URL, {
+    sequelize = new Sequelize(process.env.DATABASE_URL, {
         'dialect': 'postgress',
         'storage': __dirname + '/data/dev-todo-api.sqlite'
     });

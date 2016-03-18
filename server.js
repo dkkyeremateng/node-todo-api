@@ -5,7 +5,7 @@ var bodyParser = require('body-parser'),
 
 var app = express();
 
-var PORT = proccess.env.PORT || 3000;
+var PORT = process.env.PORT || 3000;
 
 // app config
 app.use(bodyParser.json());
