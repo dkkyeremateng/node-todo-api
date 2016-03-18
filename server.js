@@ -65,7 +65,6 @@ app.post('/todos/', function(req, res) {
     }
 
     db.todo.create(body).then(function (todo) {
-        console.log(body);
         res.status(200).json(todo);
     }).catch(function (err) {
         res.status(400).send(err);
@@ -90,29 +89,34 @@ app.delete('/todos/:id', function (req, res) {
 
 app.put('/todos/:id', function (req, res) {
     var id = parseInt(req.params.id, 10);
-    var todoFromDB = _.findWhere(todos.todos, {id: id});
     var body = _.pick(req.body, "completed", "description");
-    var validAttributes = {};
-
-    if (!todoFromDB) {
-        res.status(404).send("Todo not found with that id");
-    }
+    var attributes = {};
 
     if (body.hasOwnProperty("completed") && _.isBoolean(body.completed)) {
-        validAttributes.completed = body.completed;
+        attributes.completed = body.completed;
     } else if (body.hasOwnProperty("completed")) {
         return res.status(400).send();
     }
 
     if (body.hasOwnProperty("description") && _.isString(body.description) && body.description.trim().length > 0) {
-        validAttributes.description = body.description;
+        attributes.description = body.description;
     } else if (body.hasOwnProperty("description")) {
         return res.status(400).send();
     }
 
-    _.extend(todoFromDB, validAttributes);
-
-    res.json({todo: [todoFromDB]});
+    db.todo.findById(id).then(function (todo) {
+        if (!todo) {
+            return res.status(404).json({error: "No todo found with that id"});
+        } else {
+            return todo.update(attributes);
+        }
+    }, function () {
+        res.status(500).send();
+    }).then(function (todo) {
+        res.json(todo);
+    }, function (err) {
+        res.status(400).json(err);
+    });
 });
 
 db.sequelize.sync().then(function () {
