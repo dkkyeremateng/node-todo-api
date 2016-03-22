@@ -1,7 +1,8 @@
 var bodyParser = require('body-parser'),
     _          = require('underscore'),
     db         = require('./db'),
-    express    = require('express');
+    express    = require('express'),
+    bcrypt     = require('bcrypt');
 
 var app = express();
 
@@ -116,6 +117,31 @@ app.put('/todos/:id', function (req, res) {
         }
     }, function () {
         res.status(500).send();
+    });
+});
+
+app.post('/users/', function(req, res) {
+    var body = _.pick(req.body, "email", "password");
+
+    if (!_.isString(body.email) || !_.isString(body.password) || body.password.trim().length < 7) {
+        return res.status(400).send();
+    }
+
+    db.user.create(body).then(function (user) {
+        res.status(200).json(user.toPublicJSON());
+    }).catch(function (err) {
+        res.status(400).send(err);
+    });
+});
+
+app.post("/users/login", function (req, res) {
+    var body = _.pick(req.body, "email", "password");
+    var where = {};
+
+    db.user.authenticate(body).then(function (user) {
+        res.json(user.toPublicJSON());
+    }, function () {
+        res.status(401).send();
     });
 });
 
