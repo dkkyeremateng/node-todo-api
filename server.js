@@ -2,7 +2,8 @@ var bodyParser = require('body-parser'),
     _          = require('underscore'),
     db         = require('./db'),
     express    = require('express'),
-    bcrypt     = require('bcrypt');
+    bcrypt     = require('bcrypt'),
+    middleware = require('./middleware.js')(db);
 
 var app = express();
 
@@ -17,9 +18,11 @@ app.get('/', function(req, res) {
     res.send("Todo api root");
 });
 
-app.get('/todos/', function(req, res) {
+app.get('/todos/', middleware.requireAuthentification, function(req, res) {
     var queryParams = req.query;
-    var where = {};
+    var where = {
+        userId: req.user.get('id')
+    };
 
     if (queryParams.hasOwnProperty("completed") && queryParams.completed === "true") {
         where.completed = true;
@@ -40,10 +43,15 @@ app.get('/todos/', function(req, res) {
     });
 });
 
-app.get('/todos/:id', function(req, res) {
+app.get('/todos/:id', middleware.requireAuthentification, function(req, res) {
     var id = parseInt(req.params.id, 10);
 
-    db.todo.findById(id).then(function (todo) {
+    db.todo.findOne({
+        where: {
+            id: id,
+            userId: req.user.get('id')
+        }
+    }).then(function (todo) {
         if (!todo) {
             res.status(404).send("No todo found with that id");
         } else {
@@ -54,7 +62,7 @@ app.get('/todos/:id', function(req, res) {
     });
 });
 
-app.post('/todos/', function(req, res) {
+app.post('/todos/', middleware.requireAuthentification, function(req, res) {
     var body = _.pick(req.body, "completed", "description");
 
     if (body.hasOwnProperty("completed")) {
@@ -66,16 +74,25 @@ app.post('/todos/', function(req, res) {
     }
 
     db.todo.create(body).then(function (todo) {
-        res.status(200).json(todo);
-    }).catch(function (err) {
+        req.user.addTodo(todo).then(function (todo) {
+            return todo.reload();
+        }).then(function (todo) {
+            res.status(200).json(todo);
+        });
+    }, function (err) {
         res.status(400).send(err);
     });
 });
 
-app.delete('/todos/:id', function (req, res) {
+app.delete('/todos/:id', middleware.requireAuthentification, function (req, res) {
     var id = parseInt(req.params.id, 10);
 
-    db.todo.findById(id).then(function (todo) {
+    db.todo.findOne({
+        where: {
+            id: id,
+            userId: req.user.get('id')
+        }
+    }).then(function (todo) {
         if (!todo) {
             return res.status(404).json({error: "No todo found with that id"});
         } else {
@@ -88,7 +105,7 @@ app.delete('/todos/:id', function (req, res) {
     });
 });
 
-app.put('/todos/:id', function (req, res) {
+app.put('/todos/:id', middleware.requireAuthentification, function (req, res) {
     var id = parseInt(req.params.id, 10);
     var body = _.pick(req.body, "completed", "description");
     var attributes = {};
@@ -105,7 +122,12 @@ app.put('/todos/:id', function (req, res) {
         return res.status(400).send();
     }
 
-    db.todo.findById(id).then(function (todo) {
+    db.todo.findOne({
+        where: {
+            id: id,
+            userId: req.user.get('id')
+        }
+    }).then(function (todo) {
         if (!todo) {
             res.status(404).json({error: "No todo found with that id"});
         } else {
@@ -136,10 +158,16 @@ app.post('/users/', function(req, res) {
 
 app.post("/users/login", function (req, res) {
     var body = _.pick(req.body, "email", "password");
-    var where = {};
 
     db.user.authenticate(body).then(function (user) {
-        res.json(user.toPublicJSON());
+        var token =  user.generateToken("authentication");
+
+        if (token) {
+            res.header("Auth",token).json(user.toPublicJSON());
+        } else {
+            res.status(401).send();
+        }
+
     }, function () {
         res.status(401).send();
     });
